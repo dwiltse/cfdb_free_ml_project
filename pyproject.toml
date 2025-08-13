@@ -1,0 +1,118 @@
+[project]
+name = "cfdb-free-ml-pipeline"
+version = "0.1.0"
+description = "College Football Analytics Pipeline with ML Predictions"
+authors = [{name = "CFDB ML Project", email = "cfdb@example.com"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pyspark>=3.4.0",
+    "delta-spark>=2.4.0",
+    "databricks-sql-connector>=2.9.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "python-dotenv>=1.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "databricks-cli>=0.200.0",
+    "pytest>=7.0",
+    "pytest-spark>=0.6.0",
+    "pytest-mock>=3.10.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0.0"
+]
+ml = [
+    "scikit-learn>=1.3.0",
+    "mlflow>=2.8.0",
+    "xgboost>=1.7.0",
+    "lightgbm>=4.0.0"
+]
+mcp = [
+    "mcp>=1.0.0",
+    "asyncio-mqtt>=0.13.0"
+]
+
+[project.scripts]
+cfdb-predict = "cfdb_pipeline.cli:predict"
+cfdb-train = "cfdb_pipeline.cli:train"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.ruff.per-file-ignores]
+"tests/**/*" = ["B011"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:"
+]
