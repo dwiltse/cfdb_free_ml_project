@@ -140,12 +140,22 @@ cfdb_free_ml_project/
 ├── databricks.yml              # Asset Bundle configuration
 ├── pyproject.toml              # Python project configuration
 ├── src/
-│   └── dlt_pipeline/
-│       ├── transformations/    # DLT transformations (bronze/silver/gold)
-│       ├── explorations/       # Analysis notebooks
-│       └── utilities/          # Shared utilities
+│   ├── dlt_pipeline/
+│   │   ├── transformations/    # DLT transformations (bronze/silver/gold)
+│   │   ├── explorations/       # Data analysis SQL/notebooks
+│   │   └── utilities/          # Shared utilities
+│   ├── ml/                     # Machine learning components
+│   │   ├── training/           # Model training pipelines
+│   │   ├── inference/          # Model serving and prediction
+│   │   └── features/           # Feature engineering utilities
+│   ├── notebooks/              # Jupyter notebooks for analysis
+│   └── dashboards/             # Databricks dashboard definitions
 ├── resources/                  # Bundle resource definitions
 ├── tests/                      # Unit and integration tests
+│   ├── unit/                   # Unit tests
+│   ├── integration/            # Integration tests
+│   ├── fixtures/               # Test data fixtures
+│   └── conftest.py             # Pytest configuration
 ├── mcp_server/                 # MCP integration
 ├── docs/                       # Documentation
 └── scripts/                    # Deployment scripts
