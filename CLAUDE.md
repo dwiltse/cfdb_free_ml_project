@@ -61,3 +61,34 @@
 3. Deploy to Databricks Apps environment
 4. Configure Unity Catalog permissions
 5. Enable user authentication
+
+## Claude Code Statusline Configuration
+
+### ccusage Integration
+Add real-time usage tracking to your Claude Code statusline:
+
+**What it does:**
+- Current session cost
+- Today's total cost  
+- Active 5-hour block cost & time remaining
+- Real-time burn rate with color indicators
+
+**Quick setup:**
+Add to your `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command", 
+    "command": "bun x ccusage statusline"
+  }
+}
+```
+
+**Benefits:**
+- Monitor costs in real-time during development
+- Prevent unexpected usage spikes
+- Track project costs across sessions
+- Visual burn rate indicators for budget awareness
+
+That's it! Real-time usage tracking right in your status bar.

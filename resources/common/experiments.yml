@@ -1,0 +1,25 @@
+resources:
+  experiments:
+    cfdb_ml_experiment:
+      name: "/Shared/CFDB-${bundle.target}/ml-experiments"
+      
+    cfdb_feature_engineering:
+      name: "/Shared/CFDB-${bundle.target}/feature-engineering"
+      
+    cfdb_model_evaluation:
+      name: "/Shared/CFDB-${bundle.target}/model-evaluation"
+      
+  model_serving_endpoints:
+    cfdb_game_predictions:
+      name: "cfdb-predictions-${bundle.target}"
+      config:
+        served_entities:
+          - entity_name: cfdb_prediction_model
+            entity_version: "latest"
+            workload_size: Small
+            scale_to_zero_enabled: true
+            workload_type: CPU
+        traffic_config:
+          routes:
+            - served_model_name: cfdb_prediction_model
+              traffic_percentage: 100

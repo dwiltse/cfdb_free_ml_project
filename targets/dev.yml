@@ -1,0 +1,41 @@
+targets:
+  dev:
+    variables:
+      catalog: cfdb_free_dev
+      warehouse_id: "8804e40a7a070e15"
+    workspace:
+      host: https://dbc-08c10e87-023f.cloud.databricks.com
+    
+    # Development-specific configurations
+    resources:
+      pipelines:
+        cfdb_dlt_pipeline:
+          development: true
+          continuous: false
+          
+      jobs:
+        cfdb_data_refresh:
+          # Run more frequently in dev for testing
+          trigger:
+            cron:
+              quartz_cron_expression: "0 */6 * * *"  # Every 6 hours
+              timezone_id: "America/Chicago"
+              
+        cfdb_test_suite:
+          # Enable in dev environment
+          pause_status: UNPAUSED
+          
+      quality_monitors:
+        # Run quality monitors more frequently in dev
+        cfdb_bronze_data_quality:
+          schedule:
+            quartz_cron_expression: "0 */4 * * *"  # Every 4 hours
+        cfdb_silver_games_quality:
+          schedule:
+            quartz_cron_expression: "0 */4 * * *"  # Every 4 hours
+        cfdb_gold_predictions_quality:
+          schedule:
+            quartz_cron_expression: "0 */4 * * *"  # Every 4 hours
+        cfdb_advanced_stats_quality:
+          schedule:
+            quartz_cron_expression: "0 */4 * * *"  # Every 4 hours

@@ -1,0 +1,25 @@
+# Production environment overrides
+resources:
+  pipelines:
+    cfdb_dlt_pipeline:
+      clusters:
+        - label: default
+          autoscale:
+            min_workers: 2
+            max_workers: 10  # Larger cluster for production
+          node_type_id: i3.xlarge  # Larger nodes for performance
+          
+  # Production-specific permissions (more restrictive)
+  dashboards:
+    cfdb_team_analytics:
+      permissions:
+        - level: CAN_RUN
+          group_name: "analytics_users"
+        - level: CAN_MANAGE
+          group_name: "data_engineers"
+    cfdb_prediction_monitoring:
+      permissions:
+        - level: CAN_RUN
+          group_name: "analytics_users"
+        - level: CAN_MANAGE
+          group_name: "ml_engineers"

@@ -1,0 +1,37 @@
+resources:
+  pipelines:
+    cfdb_dlt_pipeline:
+      name: "CFDB Free ML Pipeline - ${bundle.target}"
+      catalog: ${var.catalog}
+      target: ${var.catalog}
+      development: true
+      continuous: false
+      channel: CURRENT
+      photon: false
+      edition: ADVANCED
+      
+      configuration:
+        catalog: ${var.catalog}
+        source_s3_path: "s3://ncaadata/"
+        
+      libraries:
+        - file:
+            path: ./src/dlt_pipeline/transformations/
+        - whl:
+            package: cfdb_free_ml_pipeline
+            
+      clusters:
+        - label: default
+          autoscale:
+            min_workers: 1
+            max_workers: 5
+          node_type_id: i3.xlarge
+          spark_version: 13.3.x-scala2.12
+          
+      # Notifications
+      notifications:
+        - alerts:
+            - "on-update-failure"
+            - "on-update-fatal-failure"
+          email_recipients:
+            - "your-email@example.com"  # Replace with actual email

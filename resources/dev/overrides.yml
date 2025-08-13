@@ -1,0 +1,21 @@
+# Development environment overrides
+resources:
+  pipelines:
+    cfdb_dlt_pipeline:
+      clusters:
+        - label: default
+          autoscale:
+            min_workers: 1
+            max_workers: 2  # Smaller cluster for dev
+          node_type_id: i3.large  # Smaller nodes for cost savings
+          
+  # Development-specific permissions (more permissive)
+  dashboards:
+    cfdb_team_analytics:
+      permissions:
+        - level: CAN_MANAGE
+          group_name: "developers"
+    cfdb_prediction_monitoring:
+      permissions:
+        - level: CAN_MANAGE
+          group_name: "developers"

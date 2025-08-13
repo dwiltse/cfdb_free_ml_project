@@ -1,0 +1,51 @@
+resources:
+  dashboards:
+    cfdb_team_analytics:
+      display_name: "CFDB Team Performance Analytics"
+      file_path: ./src/dashboards/team_analytics.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      permissions:
+        - level: CAN_RUN
+          group_name: "users"
+        - level: CAN_MANAGE
+          user_name: "your-email@example.com"  # Replace with actual email
+          
+    cfdb_prediction_monitoring:
+      display_name: "Game Prediction Model Monitoring"
+      file_path: ./src/dashboards/prediction_monitoring.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      permissions:
+        - level: CAN_RUN
+          group_name: "users"
+        - level: CAN_MANAGE
+          user_name: "your-email@example.com"  # Replace with actual email
+          
+    cfdb_season_overview:
+      display_name: "Season Overview & Rankings"
+      file_path: ./src/dashboards/season_overview.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      permissions:
+        - level: CAN_RUN
+          group_name: "users"
+        - level: CAN_MANAGE
+          user_name: "your-email@example.com"  # Replace with actual email
+          
+    cfdb_data_quality:
+      display_name: "Data Quality Monitoring"
+      file_path: ./src/dashboards/data_quality.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      permissions:
+        - level: CAN_RUN
+          group_name: "users"
+        - level: CAN_MANAGE
+          user_name: "your-email@example.com"  # Replace with actual email
+          
+    cfdb_epa_analysis:
+      display_name: "EPA & Advanced Analytics"
+      file_path: ./src/dashboards/epa_analysis.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      permissions:
+        - level: CAN_RUN
+          group_name: "users"
+        - level: CAN_MANAGE
+          user_name: "your-email@example.com"  # Replace with actual email

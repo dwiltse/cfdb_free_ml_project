@@ -10,19 +10,6 @@ variables:
     description: "SQL warehouse ID for DLT pipeline"
     default: "8804e40a7a070e15"
 
-targets:
-  dev:
-    variables:
-      catalog: cfdb_free_dev
-    workspace:
-      host: https://dbc-08c10e87-023f.cloud.databricks.com
-    
-  prod:
-    variables:
-      catalog: cfdb_free_prod
-    workspace:
-      host: https://dbc-08c10e87-023f.cloud.databricks.com
-
 # Artifact configuration for Python wheel
 artifacts:
   default:
@@ -30,61 +17,18 @@ artifacts:
     build: uv build
     path: .
 
-# Include configuration files
+# Include modular configuration files
 include:
-  - resources/*.yml
+  - resources/common/*.yml
+  - resources/${bundle.target}/*.yml
+  - targets/${bundle.target}.yml
 
-resources:
-  pipelines:
-    cfdb_dlt_pipeline:
-      name: "CFDB Free ML Pipeline - ${bundle.target}"
-      catalog: ${var.catalog}
-      target: ${var.catalog}
-      configuration:
-        catalog: ${var.catalog}
-      libraries:
-        - file:
-            path: ./src/dlt_pipeline/transformations/
-        - whl:
-            package: cfdb_free_ml_pipeline
-      clusters:
-        - label: default
-          autoscale:
-            min_workers: 1
-            max_workers: 5
-          node_type_id: i3.xlarge
-          spark_version: 13.3.x-scala2.12
-      
-  jobs:
-    cfdb_data_refresh:
-      name: "CFDB Data Refresh - ${bundle.target}"
-      tasks:
-        - task_key: run_dlt_pipeline
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.cfdb_dlt_pipeline.id}
-      trigger:
-        cron:
-          quartz_cron_expression: "0 6 * * *"  # Daily at 6 AM
-          timezone_id: "America/Chicago"
-      
-  experiments:
-    cfdb_ml_experiment:
-      name: "/Shared/CFDB-${bundle.target}/ml-experiments"
-      
-  model_serving_endpoints:
-    cfdb_game_predictions:
-      name: "cfdb-predictions-${bundle.target}"
-      config:
-        served_entities:
-          - entity_name: cfdb_prediction_model
-            entity_version: "1"
-            workload_size: Small
-            scale_to_zero_enabled: true
-
-# Sync configuration to exclude dashboard files
+# Sync configuration to exclude dashboard files and sensitive data
 sync:
   exclude:
     - "**/*.lvdash.json"
     - ".env"
     - "*.token"
     - ".databricks/"
+    - "**/*secret*"
+    - "**/*key*"

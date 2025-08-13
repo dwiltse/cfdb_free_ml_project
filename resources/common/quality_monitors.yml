@@ -1,0 +1,65 @@
+resources:
+  quality_monitors:
+    cfdb_bronze_data_quality:
+      table_name: ${var.catalog}.bronze.teams
+      output_schema_name: ${var.catalog}.monitoring
+      assets_dir: "/Shared/CFDB-${bundle.target}/quality-monitoring/bronze"
+      schedule:
+        quartz_cron_expression: "0 8 * * *"  # Daily at 8 AM
+        timezone_id: "America/Chicago"
+      snapshot: {}
+      
+    cfdb_silver_games_quality:
+      table_name: ${var.catalog}.silver.fact_games_silver
+      output_schema_name: ${var.catalog}.monitoring
+      assets_dir: "/Shared/CFDB-${bundle.target}/quality-monitoring/silver"
+      schedule:
+        quartz_cron_expression: "0 9 * * *"  # Daily at 9 AM
+        timezone_id: "America/Chicago"
+      time_series:
+        granularities: ["1 day"]
+        timestamp_col: "start_date"
+      custom_metrics:
+        - name: "valid_point_differential"
+          definition: "ABS(home_points - away_points) <= 100"
+          type: "custom"
+        - name: "realistic_total_points"
+          definition: "(home_points + away_points) BETWEEN 0 AND 150"
+          type: "custom"
+          
+    cfdb_gold_predictions_quality:
+      table_name: ${var.catalog}.gold.fact_game_predictions_gold
+      output_schema_name: ${var.catalog}.monitoring
+      assets_dir: "/Shared/CFDB-${bundle.target}/quality-monitoring/gold"
+      schedule:
+        quartz_cron_expression: "0 10 * * *"  # Daily at 10 AM
+        timezone_id: "America/Chicago"
+      time_series:
+        granularities: ["1 day"]
+        timestamp_col: "last_updated"
+      custom_metrics:
+        - name: "prediction_confidence_bounds"
+          definition: "prediction_confidence BETWEEN 0.0 AND 1.0"
+          type: "custom"
+        - name: "epa_differential_reasonable"
+          definition: "ABS(overall_team_rating_differential) <= 50"
+          type: "custom"
+        - name: "non_null_predictions"
+          definition: "home_team_epa_rating IS NOT NULL AND away_team_epa_rating IS NOT NULL"
+          type: "custom"
+          
+    cfdb_advanced_stats_quality:
+      table_name: ${var.catalog}.silver.fact_advanced_season_stats_silver
+      output_schema_name: ${var.catalog}.monitoring
+      assets_dir: "/Shared/CFDB-${bundle.target}/quality-monitoring/advanced"
+      schedule:
+        quartz_cron_expression: "0 11 * * *"  # Daily at 11 AM
+        timezone_id: "America/Chicago"
+      snapshot: {}
+      custom_metrics:
+        - name: "valid_epa_range"
+          definition: "offensive_epa_per_play BETWEEN -2.0 AND 2.0 AND defensive_epa_per_play BETWEEN -2.0 AND 2.0"
+          type: "custom"
+        - name: "success_rate_bounds"
+          definition: "offensive_success_rate BETWEEN 0.0 AND 1.0 AND defensive_success_rate BETWEEN 0.0 AND 1.0"
+          type: "custom"
