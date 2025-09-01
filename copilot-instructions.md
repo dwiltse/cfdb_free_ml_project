@@ -1,3 +1,22 @@
+## Python Dependency Management
+
+**Single Source of Truth:**
+- All Python dependencies should be managed in `pyproject.toml` at the project root.
+- Avoid using separate `requirements.txt` files for submodules (e.g., `mcp_server/requirements.txt`).
+- Use `[project.optional-dependencies]` in `pyproject.toml` to define extras for submodules or special use cases (e.g., `[project.optional-dependencies.mcp_server]`).
+
+**Why use `pyproject.toml`?**
+- It is the modern, standardized configuration file for Python projects (PEP 518/PEP 621).
+- Reduces duplication and risk of version conflicts by having a single source of truth.
+- Supports optional dependencies, dev dependencies, and version constraints in a structured way.
+- Compatible with all major Python tools (pip, uv, poetry, etc.).
+- Also stores project metadata and build system requirements.
+
+**Migration Steps:**
+1. Move all dependencies from `requirements.txt` files into the appropriate section of `pyproject.toml`.
+2. Remove the old `requirements.txt` files or leave a note pointing to `pyproject.toml`.
+3. Update documentation to instruct users to install with, e.g., `pip install .[mcp_server]`.
+
 ---
 applyTo: "**"
 ---

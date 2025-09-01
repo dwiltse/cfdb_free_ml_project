@@ -5,6 +5,7 @@ CFDB MCP Server - Provides Claude Desktop access to CFDB data insights
 import asyncio
 import json
 import logging
+import sys
 from typing import Dict, List, Any, Optional
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
@@ -21,6 +22,10 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("cfdb-mcp-server")
+
+def debug_print(message):
+    """Debug output that appears in Claude Desktop logs"""
+    print(f"DEBUG: {message}", file=sys.stderr, flush=True)
 
 class CFDBServer:
     def __init__(self):
@@ -71,7 +76,7 @@ class CFDBServer:
                 pass
             self.connection = None
         
-        logger.info("Database connections cleaned up")
+        debug_print("Database connections cleaned up")
     
     def _register_handlers(self):
         """Register MCP handlers"""
@@ -107,7 +112,7 @@ class CFDBServer:
                         "properties": {
                             "table_name": {
                                 "type": "string",
-                                "description": "Name of the table to describe (teams, games, plays, etc.)"
+                                "description": "Name of the table to describe (teams, games, conferences, etc.)"
                             }
                         },
                         "required": ["table_name"]
@@ -148,6 +153,8 @@ class CFDBServer:
                 arguments = {}
             
             try:
+                debug_print(f"Tool called: {name} with args: {arguments}")
+                
                 if name == "query_cfdb_data":
                     return await self._query_cfdb_data(
                         arguments.get("query", ""),
@@ -175,6 +182,7 @@ class CFDBServer:
                     
             except Exception as e:
                 logger.error(f"Error in tool {name}: {str(e)}")
+                debug_print(f"Error in tool {name}: {str(e)}")
                 return [types.TextContent(
                     type="text",
                     text=f"Error executing {name}: {str(e)}"
@@ -182,7 +190,6 @@ class CFDBServer:
     
     async def _connect_databricks(self):
         """Establish connection to Databricks"""
-        # Always create a fresh connection to avoid session handle issues
         try:
             # Close existing connection if it exists
             if self.connection:
@@ -193,14 +200,16 @@ class CFDBServer:
                 self.connection = None
                 self.cursor = None
             
+            debug_print("Connecting to Databricks...")
             self.connection = sql.connect(
                 server_hostname=self.databricks_config["server_hostname"],
                 http_path=self.databricks_config["http_path"],
                 access_token=self.databricks_config["access_token"]
             )
             self.cursor = self.connection.cursor()
-            logger.info("Connected to Databricks")
+            debug_print("Connected to Databricks successfully")
         except Exception as e:
+            debug_print(f"Failed to connect to Databricks: {str(e)}")
             logger.error(f"Failed to connect to Databricks: {str(e)}")
             self.connection = None
             self.cursor = None
@@ -208,23 +217,30 @@ class CFDBServer:
     
     async def _query_cfdb_data(self, query: str, limit: int) -> List[types.TextContent]:
         """Execute SQL query against CFDB data"""
+        debug_print(f"Executing query: {query}")
         await self._connect_databricks()
         
         # Add catalog.schema prefix to table names if not already present
         catalog = self.databricks_config['catalog']
         schema = self.databricks_config['schema']
         
-        # Simple table name replacement for common bronze tables
+        # Updated table replacements based on actual tables in your database
         table_replacements = {
-            'teams_bronze': f'{catalog}.{schema}.teams_bronze',
-            'games_bronze': f'{catalog}.{schema}.games_bronze', 
-            'plays_bronze': f'{catalog}.{schema}.plays_bronze',
-            'game_drives_bronze': f'{catalog}.{schema}.game_drives_bronze',
-            'game_stats_bronze': f'{catalog}.{schema}.game_stats_bronze',
-            'season_stats_bronze': f'{catalog}.{schema}.season_stats_bronze',
-            'conferences_bronze': f'{catalog}.{schema}.conferences_bronze',
-            'nebraska_games_bronze': f'{catalog}.{schema}.nebraska_games_bronze',
-            'nebraska_schedule_bronze': f'{catalog}.{schema}.nebraska_schedule_bronze'
+            # Legacy names with _bronze suffix (for backward compatibility)
+            'teams_bronze': f'{catalog}.{schema}.teams',
+            'games_bronze': f'{catalog}.{schema}.games', 
+            'plays_bronze': f'{catalog}.{schema}.plays',
+            'conferences_bronze': f'{catalog}.{schema}.conferences',
+            'game_stats_bronze': f'{catalog}.{schema}.game_stats',
+            'advanced_game_stats_bronze': f'{catalog}.{schema}.advanced_game_stats',
+            
+            # Actual table names (without _bronze suffix)
+            'games': f'{catalog}.{schema}.games',
+            'conferences': f'{catalog}.{schema}.conferences',
+            'game_stats': f'{catalog}.{schema}.game_stats',
+            'advanced_game_stats': f'{catalog}.{schema}.advanced_game_stats',
+            'teams': f'{catalog}.{schema}.teams',
+            'plays': f'{catalog}.{schema}.plays'
         }
         
         modified_query = query
@@ -233,17 +249,25 @@ class CFDBServer:
             for table, full_table in table_replacements.items():
                 if table in modified_query:
                     modified_query = modified_query.replace(table, full_table)
+                    debug_print(f"Replaced {table} with {full_table}")
         
-        # Add limit to query if not already present
-        if "LIMIT" not in modified_query.upper():
+        # Add limit to query if not already present and not a DDL/metadata command
+        ddl_commands = ['DESCRIBE', 'SHOW', 'EXPLAIN', 'CREATE', 'ALTER', 'DROP']
+        is_ddl = any(cmd in modified_query.upper() for cmd in ddl_commands)
+        
+        if not is_ddl and "LIMIT" not in modified_query.upper():
             full_query = f"{modified_query} LIMIT {limit}"
         else:
             full_query = modified_query
+        
+        debug_print(f"Final query: {full_query}")
         
         try:
             self.cursor.execute(full_query)
             results = self.cursor.fetchall()
             columns = [desc[0] for desc in self.cursor.description]
+            
+            debug_print(f"Query returned {len(results)} rows")
             
             # Format results as JSON
             formatted_results = []
@@ -263,67 +287,95 @@ class CFDBServer:
             )]
             
         except Exception as e:
+            error_msg = f"Query failed: {str(e)}"
+            debug_print(error_msg)
             return [types.TextContent(
                 type="text",
-                text=f"Query failed: {str(e)}"
+                text=error_msg
             )]
         finally:
-            # Clean up connection after each query to prevent session handle issues
             self._cleanup_connection()
     
     async def _get_table_schema(self, table_name: str) -> List[types.TextContent]:
         """Get schema for specified table"""
+        debug_print(f"Getting schema for table: {table_name}")
         await self._connect_databricks()
         
-        schema_query = f"DESCRIBE TABLE {self.databricks_config['catalog']}.{self.databricks_config['schema']}.{table_name}_bronze"
+        # Remove _bronze suffix if present for compatibility
+        clean_table_name = table_name.replace('_bronze', '')
+        full_table_name = f"{self.databricks_config['catalog']}.{self.databricks_config['schema']}.{clean_table_name}"
+        schema_query = f"DESCRIBE TABLE {full_table_name}"
+        
+        debug_print(f"Schema query: {schema_query}")
         
         try:
             self.cursor.execute(schema_query)
             schema_info = self.cursor.fetchall()
             
-            schema_text = f"Schema for {table_name}_bronze:\n\n"
+            schema_text = f"Schema for {full_table_name}:\n\n"
             for row in schema_info:
-                schema_text += f"{row[0]}: {row[1]} ({row[2] or 'nullable'})\n"
+                # Handle different describe table output formats
+                if len(row) >= 3:
+                    schema_text += f"{row[0]}: {row[1]} ({row[2] or 'nullable'})\n"
+                elif len(row) >= 2:
+                    schema_text += f"{row[0]}: {row[1]}\n"
+                else:
+                    schema_text += f"{row[0]}\n"
             
             return [types.TextContent(type="text", text=schema_text)]
             
         except Exception as e:
+            error_msg = f"Failed to get schema for {table_name}: {str(e)}"
+            debug_print(error_msg)
             return [types.TextContent(
                 type="text",
-                text=f"Failed to get schema for {table_name}: {str(e)}"
+                text=error_msg
             )]
         finally:
-            # Clean up connection after each query to prevent session handle issues
             self._cleanup_connection()
     
     async def _get_data_summary(self) -> List[types.TextContent]:
         """Get summary of all CFDB data"""
+        debug_print("Getting data summary")
         await self._connect_databricks()
         
-        summary_query = f"SELECT * FROM {self.databricks_config['catalog']}.{self.databricks_config['schema']}.bronze_summary"
-        
         try:
-            self.cursor.execute(summary_query)
-            summary_data = self.cursor.fetchall()
-            columns = [desc[0] for desc in self.cursor.description]
+            # Get list of tables in the bronze schema
+            tables_query = f"SELECT table_name FROM {self.databricks_config['catalog']}.information_schema.tables WHERE table_schema = '{self.databricks_config['schema']}' AND table_name NOT LIKE '__%'"
+            
+            debug_print(f"Tables query: {tables_query}")
+            self.cursor.execute(tables_query)
+            tables = self.cursor.fetchall()
             
             summary_text = "CFDB Data Summary:\n\n"
-            for row in summary_data:
-                row_dict = dict(zip(columns, row))
-                summary_text += f"Table: {row_dict['table_name']}\n"
-                summary_text += f"  Records: {row_dict['record_count']:,}\n"
-                summary_text += f"  Files: {row_dict['file_count']}\n"
-                summary_text += f"  Latest Ingestion: {row_dict['latest_ingestion']}\n\n"
+            summary_text += f"Catalog: {self.databricks_config['catalog']}\n"
+            summary_text += f"Schema: {self.databricks_config['schema']}\n\n"
+            
+            # Get row count for each table
+            for table_row in tables:
+                table_name = table_row[0]
+                try:
+                    count_query = f"SELECT COUNT(*) as count FROM {self.databricks_config['catalog']}.{self.databricks_config['schema']}.{table_name}"
+                    self.cursor.execute(count_query)
+                    count_result = self.cursor.fetchone()
+                    row_count = count_result[0] if count_result else 0
+                    
+                    summary_text += f"Table: {table_name}\n"
+                    summary_text += f"  Records: {row_count:,}\n\n"
+                except Exception as e:
+                    summary_text += f"Table: {table_name}\n"
+                    summary_text += f"  Records: Error getting count - {str(e)}\n\n"
             
             return [types.TextContent(type="text", text=summary_text)]
             
         except Exception as e:
+            error_msg = f"Failed to get data summary: {str(e)}"
+            debug_print(error_msg)
             return [types.TextContent(
                 type="text",
-                text=f"Failed to get data summary: {str(e)}"
+                text=error_msg
             )]
         finally:
-            # Clean up connection after each query to prevent session handle issues
             self._cleanup_connection()
     
     async def _suggest_silver_layer(self, focus_area: str) -> List[types.TextContent]:
@@ -352,7 +404,7 @@ Silver Layer Suggestions for Games:
      home_score + away_score as total_score,
      ABS(home_score - away_score) as margin,
      CASE WHEN week > 15 THEN 'Postseason' ELSE 'Regular' END as game_type
-   FROM LIVE.games_bronze
+   FROM LIVE.games
    WHERE id IS NOT NULL
    ```
             """,
@@ -374,7 +426,7 @@ Silver Layer Suggestions for Teams:
      division,
      classification,
      current_timestamp() as effective_date
-   FROM LIVE.teams_bronze
+   FROM LIVE.teams
    ```
             """,
             "plays": """
@@ -404,7 +456,7 @@ Silver Layer Suggestions for Plays:
      END as play_category,
      yardsGained as yards_gained,
      CASE WHEN down <= 2 AND yardsGained >= yardsToGo THEN 1 ELSE 0 END as successful_play
-   FROM LIVE.plays_bronze
+   FROM LIVE.plays
    WHERE gameId IS NOT NULL
    ```
             """
@@ -421,6 +473,7 @@ Silver Layer Suggestions for Plays:
     
     async def run(self):
         """Run the MCP server"""
+        debug_print("Starting MCP server...")
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
             await self.server.run(
                 read_stream,
